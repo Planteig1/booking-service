@@ -6,10 +6,20 @@ from flask import Flask, jsonify, request
 import requests
 import sqlite3
 from datetime import datetime, timedelta
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, create_access_token
+import os
+
+
 
 app = Flask(__name__)
 
+app.config['JWT_SECRET_KEY'] = os.getenv('KEY')
+app.config['JWT_HEADER_TYPE'] = 'token'
+jwt = JWTManager(app)
+
+
 @app.route('/book/room', methods=["POST"])
+@jwt_required()
 def create_room_booking():
 
     # Retrieve the data [Room Number, Guest Id, Room Price per day, Days Rented, Season]
@@ -88,6 +98,13 @@ def create_room_booking():
     
             requests.put("http://room-service:5000/room/availability", json={"room_number": room_number})
             # Maybe some error handling idk?
+            return "Room booked successfully", 200
+    elif response.status_code == 200 and response_data == False: 
+        # Good response, but the room is already booked!
+        return "Room is already booked", 400
+    else:
+        # Bad response
+        return "Oh no! Something went wrong, please try again later!", 400
 
     
 @app.route('/bookings', methods=["GET"])
